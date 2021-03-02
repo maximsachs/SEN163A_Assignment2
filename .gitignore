@@ -1,0 +1,12 @@
+RIPE_Dataset/
+.vscode/
+*tmp/*
+*.pyc
+*.pem
+*.log
+*.json
+*.png
+*.npy
+*.h5
+__pycache__/
+.pytest_cache/
