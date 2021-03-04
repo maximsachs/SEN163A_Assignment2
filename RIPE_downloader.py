@@ -1,3 +1,7 @@
+"""
+This script downloads the RIPE ping datasets for a selected day.
+"""
+
 import wget
 import os
 import sys

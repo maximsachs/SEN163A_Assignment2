@@ -7,15 +7,29 @@
 # The RIPE data is compressed in a bz2 file. You can open it directly in python
 # to save storage space, but at the expense of additional computing power 
 # (for on-the-fly decompression).
+
 import time
 import bz2
 import os
 import sys
 import json
 
+day_to_get = "2021-02-20"
+dataset_type = "ping"
+data_folder = "RIPE_Dataset"
+
+files_to_process = []
+
+for i in range(1):
+    # https://data-store.ripe.net/datasets/atlas-daily-dumps/2021-02-20/ping-2021-02-20T0000.bz2
+    filename = f'{dataset_type}-{day_to_get}T{i:02}00'
+    files_to_process.append(filename)
+
+
+
 # OPTION 1: open decompressed file
 #decompression of one file can take up to 5 minutes (7zip @ Intel i5 4210U)
-decomFilename = 'ping-2020-02-20T0000'
+decomFilename = os.path.join(data_folder, "decompressed", files_to_process[0])
 decomFile     = open(decomFilename, 'rt') 
 
 #read first line and print
@@ -50,11 +64,12 @@ print("Estimated loading time of entire decompression file: "  + \
 #finally close decomFile
 decomFile.close()
 
-#%% OPTION 2: 
+# OPTION 2: 
 #open .bz2 file directly
-bz2Filename = 'ping-2020-02-20T0000.bz2'
+bz2Filename = os.path.join(data_folder, files_to_process[0])+'.bz2'
+print(bz2Filename)
 bz2File     = bz2.open(bz2Filename, 'rt') 
-
+print(bz2File)
 #read first 100k lines to estimate total loading time
 count = 0;
 st    = time.time()
