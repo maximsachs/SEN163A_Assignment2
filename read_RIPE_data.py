@@ -17,6 +17,7 @@ import json
 day_to_get = "2021-02-20"
 dataset_type = "ping"
 data_folder = "RIPE_Dataset"
+n_lines_to_test = 1000000
 
 files_to_process = []
 
@@ -51,13 +52,13 @@ count = 0;
 st    = time.time()
 for line in decomFile:
     count = count + 1
-    if count>100000: break
+    if count>n_lines_to_test: break
     
 #print time and estimate total time            
-dur         = round(time.time() - st,2)
-estTotTime  = round( (dur/100000)*nrOfLines )
+dur_dec         = round(time.time() - st,2)
+estTotTime  = round( (dur_dec/n_lines_to_test)*nrOfLines )
 print("\nDecompressed file:" )
-print("Loading 100k lines took: "  + str(dur) + " seconds")
+print("Loading 100k lines took: "  + str(dur_dec) + " seconds")
 print("Estimated loading time of entire decompression file: "  + \
       str(estTotTime) + " seconds" )
 
@@ -75,15 +76,17 @@ count = 0;
 st    = time.time()
 for line in bz2File:
     count = count + 1
-    if count>100000: break
+    if count>n_lines_to_test: break
 
 #print time and estimate total time            
-dur         = round(time.time() - st,2)
-estTotTime  = round( (dur/100000)*nrOfLines )
+dur_comp         = round(time.time() - st,2)
+estTotTime  = round( (dur_comp/n_lines_to_test)*nrOfLines )
 print("\nbz2 file:" )
-print("Loading 100k lines took: "  + str(dur) + " seconds")
+print("Loading 100k lines took: "  + str(dur_comp) + " seconds")
 print("Estimated loading time of entire bz2 file: "  + str(estTotTime) + \
       " seconds" )
 
 #finally close bz2File
 bz2File.close()
+
+print("Decompressing to disk first is approx", str(dur_comp/dur_dec), "times faster than realtime")
