@@ -16,10 +16,11 @@ european_country_codes = ["BE", "BG", "CZ", "DK", "DE", "EE", "IE", "EL", "ES", 
 print(f"There are {len(european_country_codes)} european countries:")
 print(european_country_codes)
 
+print("The As dataset:")
 print(AS_dataset)
 print("Country codes in the AS dataset:")
 print(AS_dataset["Country"].unique())
-
+print("The probe dataset:")
 print(probe_dataset)
 
 # Evaluate if there are limitations in the provided datasets (AS and probe data set).  If you  find  limitations,  describe  these  and  conjecture  possible  reasons,  supported  withdata.
