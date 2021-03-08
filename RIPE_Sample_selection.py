@@ -76,7 +76,7 @@ for i in range(n_files_to_process):
     filename = f'{dataset_type}-{day_to_get}T{i:02}00'
     files_to_process.append(filename)
 
-def perform_sampling_on_file(input_filename, shared_counter, batch_size=5000):
+def perform_sampling_on_file(input_filename, shared_counter, batch_size=200000):
     """
     Does the sample selection for 1 specific file.
     """
@@ -196,13 +196,13 @@ if cpu_count > 1:
                 avg_per_second = np.mean(np.diff(last_progresses))/refresh_interval
             running_duration = time.time() - start_time
             human_duration = humanize.time.precisedelta(dt.timedelta(seconds=running_duration))
-            progress_message = f"[{human_duration}] Processed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}"
+            progress_message = f"[{human_duration}] Processed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}                            "
             sys.stdout.write("\r" + progress_message)
             sys.stdout.flush()
             time.sleep(refresh_interval)
         pool.join()
         # Printing newline so we can print normally again.
-        print(f"\rProcessed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}")
+        print(f"\rProcessed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}                        ")
 else:
     for input_filename in files_to_process:
         perform_sampling_on_file(input_filename, shared_counter)
