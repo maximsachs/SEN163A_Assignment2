@@ -24,7 +24,7 @@ import humanize
 import datetime as dt
 
 start_time = time.time()
-cpu_count = max(1, multiprocessing.cpu_count()-2) # You can overwrite the cpu count to 1 here to run in single process mode.
+cpu_count = max(1, multiprocessing.cpu_count()-3) # You can overwrite the cpu count to 1 here to run in single process mode.
 dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
 data_folder = "RIPE_Dataset" # The folder where the raw ping input data is stored.
 selected_data_output_folder = "RIPE_Preprocessed_Data" # The folder to put the selected sample files.
@@ -43,7 +43,7 @@ if 4 in ip_versions:
     ipv4_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.CSV", "IP2LOCATION-LITE-DB1.CSV"), 
                                  names=["start_ip", "end_ip", "country_code", "country_long"],
                                  dtype={"start_ip": np.uint64, "end_ip": np.uint64, "country_code": str, "country_long": str})
-    # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search the first column only.
+    # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search one column only.
     predicted_start_ip = ipv4_locations["end_ip"][:-1].values+1
     actual_start_ip = ipv4_locations["start_ip"][1:].values
     np.testing.assert_array_equal(actual_start_ip, predicted_start_ip)
@@ -52,7 +52,7 @@ if 6 in ip_versions:
     ipv6_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.IPV6.CSV", "IP2LOCATION-LITE-DB1.IPV6.CSV"),
                                  names=["start_ip", "end_ip", "country_code", "country_long"],
                                  dtype={"start_ip": np.float128, "end_ip": np.float128, "country_code": str, "country_long": str})
-    # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search the first column only.
+    # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search one column only.
     predicted_start_ip = ipv6_locations["end_ip"][:-1].values+1
     actual_start_ip = ipv6_locations["start_ip"][1:].values
     np.testing.assert_array_equal(actual_start_ip, predicted_start_ip)
@@ -73,7 +73,7 @@ for i in range(n_files_to_process):
     filename = f'{dataset_type}-{day_to_get}T{i:02}00'
     files_to_process.append(filename)
 
-def perform_sampling_on_file(input_filename, shared_counter, batch_size=5000):
+def perform_sampling_on_file(input_filename, shared_counter, batch_size=2500):
     """
     Does the sample selection for 1 specific file.
     """
@@ -116,15 +116,15 @@ def perform_sampling_on_file(input_filename, shared_counter, batch_size=5000):
         # In some cases the ping sample failed due to some error, e.g. dns resolution failed.. So if we encounter error, we skip.
         if "error" in line:
             continue
-        # 1. First identify if the probe_id is within the ids we want to analyse.
-        # To do so we slit at prb_id and take the latter half \":6851,\"timest..
-        # Then remove the first two characters (":) and split at the next comma, take first entry thats the probe id.
-        # Convert to int, cause we doing quickmath.
-        prb_id = int(line.split("\"prb_id\"")[-1][1:].split(",")[0])
-        if prb_id in prbs_to_select:
-            # 2. Identify which type of ip this is.
-            ip_version = int(line.split("\"af\"")[-1][1:].split(",")[0])
-            if ip_version in ip_versions:
+        # 1. Identify which type of ip this is.
+        ip_version = int(line.split("\"af\"")[-1][1:].split(",")[0])
+        if ip_version in ip_versions:
+            # 2. Identify if the probe_id is within the ids we want to analyse.
+            # To do so we split at prb_id and take the latter half \":6851,\"timest..
+            # Then remove the first two characters (":) and split at the next comma, take first entry thats the probe id.
+            # Convert to int, cause we doing quickmath.
+            prb_id = int(line.split("\"prb_id\"")[-1][1:].split(",")[0])
+            if prb_id in prbs_to_select:
                 # 3. Lookup if the destination ip is in a european country.
                 # Take note of the slightly different string parsing here, because the value is a string in the input line! Previous values were integers.
                 dst_addr = line.split("\"dst_addr\"")[-1][2:].split("\",")[0]
@@ -140,7 +140,7 @@ def perform_sampling_on_file(input_filename, shared_counter, batch_size=5000):
                     # Adding the country code to the line:
                     line = line[:-2]+f",\"country_code\":\"{country_code}\"}}\n"
                     line_batch += line
-        # Every 1000 lines we update the global counter variable.
+        # Every batch_size lines we update the global counter variable.
         if count % batch_size == 0:
             shared_counter.value += batch_size
             count = 0
@@ -170,25 +170,24 @@ if cpu_count > 1:
         pool.close()
         # Quick sleep to give the processes time to start off.
         time.sleep(1)
-        avg_per_sec = np.nan
+        avg_per_second = np.nan
+        refresh_interval = 3 # Number of seconds between output updates.
         while not all([job.ready() for job in jobs]):
             last_progresses.append(shared_counter.value)
             if len(last_progresses) > 2:
-                avg_per_sec = np.mean(np.diff(last_progresses))
+                avg_per_second = np.mean(np.diff(last_progresses))/refresh_interval
             running_duration = time.time() - start_time
             human_duration = humanize.time.precisedelta(dt.timedelta(seconds=running_duration))
-            progress_message = f"[{human_duration}] Processed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_sec)}"
+            progress_message = f"[{human_duration}] Processed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}"
             sys.stdout.write("\r" + progress_message)
             sys.stdout.flush()
-            # Printing progress update every second.
-            time.sleep(1)
+            time.sleep(refresh_interval)
         pool.join()
         # Printing newline so we can print normally again.
-        print(f"\rProcessed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_sec)}")
+        print(f"\rProcessed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}")
 else:
     for input_filename in files_to_process:
         perform_sampling_on_file(input_filename, shared_counter)
-    print(f"\rProcessed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_sec)}")
 
 
 
