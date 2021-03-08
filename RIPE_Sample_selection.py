@@ -73,7 +73,7 @@ for i in range(n_files_to_process):
     filename = f'{dataset_type}-{day_to_get}T{i:02}00'
     files_to_process.append(filename)
 
-def perform_sampling_on_file(input_filename, shared_counter):
+def perform_sampling_on_file(input_filename, shared_counter, batch_size=5000):
     """
     Does the sample selection for 1 specific file.
     """
@@ -133,8 +133,8 @@ def perform_sampling_on_file(input_filename, shared_counter):
                     line = line[:-2]+f",\"country_code\":\"{country_code}\"}}\n"
                     line_batch += line
         # Every 1000 lines we update the global counter variable.
-        if count % 1000 == 0:
-            shared_counter.value += 1000
+        if count % batch_size == 0:
+            shared_counter.value += batch_size
             count = 0
             output_file.write(line_batch)
         if n_lines_to_process and tot_count > n_lines_to_process:
@@ -151,7 +151,7 @@ def perform_sampling_on_file(input_filename, shared_counter):
 
 # Setting up progress monitoring.
 shared_counter = multiprocessing.Manager().Value('i', 0)
-last_progresses = deque([], maxlen=20)
+last_progresses = deque([], maxlen=60)
 print(f"Starting processing with {cpu_count} parallel tasks")
 with multiprocessing.Pool(processes=cpu_count) as pool:
     jobs = []
