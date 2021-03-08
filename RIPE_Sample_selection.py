@@ -40,18 +40,18 @@ if not os.path.exists(selected_data_output_folder):
 # Loading the GEO IP lookup tables.
 ip_country_lookup = {}
 if 4 in ip_versions:
-    ipv4_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.CSV", "IP2LOCATION-LITE-DB1.CSV"), names=["start_ip", "end_ip", "country_code", "country_long"])
-    for col in ["start_ip", "end_ip"]:
-        ipv4_locations[col] = ipv4_locations[col].astype('int64')
+    ipv4_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.CSV", "IP2LOCATION-LITE-DB1.CSV"), 
+                                 names=["start_ip", "end_ip", "country_code", "country_long"],
+                                 dtype={"start_ip": np.uint64, "end_ip": np.uint64, "country_code": str, "country_long": str})
     # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search the first column only.
     predicted_start_ip = ipv4_locations["end_ip"][:-1].values+1
     actual_start_ip = ipv4_locations["start_ip"][1:].values
     np.testing.assert_array_equal(actual_start_ip, predicted_start_ip)
     ip_country_lookup[4] = ipv4_locations
-elif 6 in ip_versions:
-    ipv6_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.IPV6.CSV", "IP2LOCATION-LITE-DB1.IPV6.CSV"), names=["start_ip", "end_ip", "country_code", "country_long"])
-    for col in ["start_ip", "end_ip"]:
-        ipv6_locations[col] = ipv6_locations[col].astype('int64')
+if 6 in ip_versions:
+    ipv6_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.IPV6.CSV", "IP2LOCATION-LITE-DB1.IPV6.CSV"),
+                                 names=["start_ip", "end_ip", "country_code", "country_long"],
+                                 dtype={"start_ip": np.float128, "end_ip": np.float128, "country_code": str, "country_long": str})
     # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search the first column only.
     predicted_start_ip = ipv6_locations["end_ip"][:-1].values+1
     actual_start_ip = ipv6_locations["start_ip"][1:].values
@@ -106,7 +106,11 @@ def perform_sampling_on_file(input_filename, shared_counter, batch_size=5000):
     tot_count = 0
     count = 0
     line_batch = ""
-    for line in ping_dataset_file:
+    if cpu_count > 1:
+        the_iterator = ping_dataset_file
+    else:
+        the_iterator = tqdm(ping_dataset_file)
+    for line in the_iterator:
         count += 1
         tot_count += 1
         # In some cases the ping sample failed due to some error, e.g. dns resolution failed.. So if we encounter error, we skip.
@@ -126,6 +130,9 @@ def perform_sampling_on_file(input_filename, shared_counter, batch_size=5000):
                 dst_addr = line.split("\"dst_addr\"")[-1][2:].split("\",")[0]
                 # Converting the destination address into the decimal integer representation:
                 dst_addr_int = int(ipaddress.ip_address(dst_addr))
+                if ip_version == 6:
+                    # Gotta convert to float here:
+                    dst_addr_int = np.float128(dst_addr_int)
                 # Finding which country code its in:
                 geo_ip_row = ip_country_lookup[ip_version][ip_country_lookup[ip_version]["end_ip"] > dst_addr_int].iloc[0]
                 country_code = geo_ip_row["country_code"]
@@ -154,29 +161,35 @@ def perform_sampling_on_file(input_filename, shared_counter, batch_size=5000):
 shared_counter = multiprocessing.Manager().Value('i', 0)
 last_progresses = deque([], maxlen=60)
 print(f"Starting processing with {cpu_count} parallel tasks")
-with multiprocessing.Pool(processes=cpu_count) as pool:
-    jobs = []
-    for input_filename in files_to_process:
-        new_job = pool.apply_async(func=perform_sampling_on_file, args=(input_filename, shared_counter))
-        jobs.append(new_job)
-    pool.close()
-    # Quick sleep to give the processes time to start off.
-    time.sleep(1)
-    avg_per_sec = np.nan
-    while not all([job.ready() for job in jobs]):
-        last_progresses.append(shared_counter.value)
-        if len(last_progresses) > 2:
-            avg_per_sec = np.mean(np.diff(last_progresses))
-        running_duration = time.time() - start_time
-        human_duration = humanize.time.precisedelta(dt.timedelta(seconds=running_duration))
-        progress_message = f"[{human_duration}] Processed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_sec)}"
-        sys.stdout.write("\r" + progress_message)
-        sys.stdout.flush()
-        # Printing progress update every second.
+if cpu_count > 1:
+    with multiprocessing.Pool(processes=cpu_count) as pool:
+        jobs = []
+        for input_filename in files_to_process:
+            new_job = pool.apply_async(func=perform_sampling_on_file, args=(input_filename, shared_counter))
+            jobs.append(new_job)
+        pool.close()
+        # Quick sleep to give the processes time to start off.
         time.sleep(1)
-    pool.join()
-    # Printing newline so we can print normally again.
+        avg_per_sec = np.nan
+        while not all([job.ready() for job in jobs]):
+            last_progresses.append(shared_counter.value)
+            if len(last_progresses) > 2:
+                avg_per_sec = np.mean(np.diff(last_progresses))
+            running_duration = time.time() - start_time
+            human_duration = humanize.time.precisedelta(dt.timedelta(seconds=running_duration))
+            progress_message = f"[{human_duration}] Processed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_sec)}"
+            sys.stdout.write("\r" + progress_message)
+            sys.stdout.flush()
+            # Printing progress update every second.
+            time.sleep(1)
+        pool.join()
+        # Printing newline so we can print normally again.
+        print(f"\rProcessed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_sec)}")
+else:
+    for input_filename in files_to_process:
+        perform_sampling_on_file(input_filename, shared_counter)
     print(f"\rProcessed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_sec)}")
+
 
 
 print("Took", time.time()-start_time, "seconds")
