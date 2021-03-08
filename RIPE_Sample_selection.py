@@ -77,7 +77,6 @@ def perform_sampling_on_file(input_filename, shared_counter, batch_size=5000):
     """
     Does the sample selection for 1 specific file.
     """
-    print(f"Beginning processing of file {input_filename}.\n")
 
     # IF the decompressed file is available then will use that as input,
     # otherwise using the compressed file and decompressing on the fly
@@ -86,12 +85,14 @@ def perform_sampling_on_file(input_filename, shared_counter, batch_size=5000):
     if os.path.exists(decomFilename):
         ping_dataset_file = open(decomFilename, 'rt') 
         file_mode = "decompressed"
-    elif os.path.exists(comFilename):
+    elif os.path.exists(bz2Filename):
         ping_dataset_file = bz2.open(bz2Filename, 'rt')
         file_mode = "bz2"
     else:
         print(f"{input_filename} does not exist, check your settings and are is all of the RIPE data downloaded?")
         return
+    
+    print(f"Beginning processing of file {input_filename} in \"{file_mode}\" mode.\n")
 
     if file_mode == "decompressed":
         out_folder_decompressed = os.path.join(selected_data_output_folder, "decompressed")
@@ -161,12 +162,11 @@ with multiprocessing.Pool(processes=cpu_count) as pool:
     pool.close()
     # Quick sleep to give the processes time to start off.
     time.sleep(1)
+    avg_per_sec = np.nan
     while not all([job.ready() for job in jobs]):
         last_progresses.append(shared_counter.value)
         if len(last_progresses) > 2:
             avg_per_sec = np.mean(np.diff(last_progresses))
-        else:
-            avg_per_sec = np.nan
         running_duration = time.time() - start_time
         human_duration = humanize.time.precisedelta(dt.timedelta(seconds=running_duration))
         progress_message = f"[{human_duration}] Processed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_sec)}"
