@@ -21,6 +21,7 @@ import ipaddress
 import multiprocessing
 from collections import deque
 import humanize
+import datetime as dt
 
 start_time = time.time()
 cpu_count = max(1, multiprocessing.cpu_count()-2) # You can overwrite the cpu count to 1 here to run in single process mode.
@@ -103,6 +104,7 @@ def perform_sampling_on_file(input_filename, shared_counter):
         output_file = bz2.open(output_filename, 'wt') 
     tot_count = 0
     count = 0
+    line_batch = ""
     for line in ping_dataset_file:
         count += 1
         tot_count += 1
@@ -129,11 +131,12 @@ def perform_sampling_on_file(input_filename, shared_counter):
                 if country_code in european_country_codes:
                     # Adding the country code to the line:
                     line = line[:-2]+f",\"country_code\":\"{country_code}\"}}\n"
-                    output_file.write(line)
+                    line_batch += line
         # Every 1000 lines we update the global counter variable.
         if count % 1000 == 0:
             shared_counter.value += 1000
             count = 0
+            output_file.write(line_batch)
         if n_lines_to_process and tot_count > n_lines_to_process:
             break
 
@@ -141,6 +144,8 @@ def perform_sampling_on_file(input_filename, shared_counter):
     ping_dataset_file.close()
     output_file.close()
     # Updating the shared counter with the remaining count:
+    if line_batch:
+        output_file.write(line_batch)
     shared_counter.value += count
     return
 
@@ -162,7 +167,9 @@ with multiprocessing.Pool(processes=cpu_count) as pool:
             avg_per_sec = np.mean(np.diff(last_progresses))
         else:
             avg_per_sec = np.nan
-        progress_message = f"Processed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_sec)}"
+        running_duration = time.time() - start_time
+        human_duration = humanize.time.precisedelta(dt.timedelta(seconds=running_duration))
+        progress_message = f"[{human_duration}] Processed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_sec)}"
         sys.stdout.write("\r" + progress_message)
         sys.stdout.flush()
         # Printing progress update every second.
