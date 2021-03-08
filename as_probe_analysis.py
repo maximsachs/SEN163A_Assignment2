@@ -48,6 +48,11 @@ for asn in as_in_europe_and_with_probe["ASN"]:
 as_in_europe_and_with_probe["prb_ids"] = probe_ids
 as_in_europe_and_with_probe["prb_count"] = n_probes
 
+# Saving the selected AS and their probe ids:
+
+with open(os.path.join(dataset_folder, 'AS_in_EU_with_Probe.pkl'), 'wb') as outfile:
+    pickle.dump(as_in_europe_and_with_probe, outfile)
+
 # Printing results for report
 print(as_count_per_country.to_frame().transpose())
 as_in_europe_and_with_probe_for_report = as_in_europe_and_with_probe.head(3).append(as_in_europe_and_with_probe.tail(3))
