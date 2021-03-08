@@ -1,6 +1,7 @@
 import os
 import pickle
 import pandas as pd
+from eu_country_codes import european_country_codes
 
 dataset_folder = "PICKLE_Datasets"
 
@@ -12,7 +13,6 @@ AS_dataset.sort_values("ASN", ascending=True, inplace=True)
 with open(os.path.join(dataset_folder, 'probe_dataset.pkl'), 'rb') as f:
     probe_dataset = pickle.load(f)
 
-european_country_codes = ["BE", "BG", "CZ", "DK", "DE", "EE", "IE", "EL", "ES", "FR", "HR", "IT", "CY", "LV", "LT", "LU", "HU", "MT", "NL", "AT", "PL", "PT", "RO", "SI", "SK", "FI", "SE"]
 print(f"There are {len(european_country_codes)} european countries:")
 print(european_country_codes)
 

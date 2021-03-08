@@ -1,4 +1,5 @@
 RIPE_Dataset/
+RIPE_Preprocessed_Data/
 .vscode/
 *tmp/*
 *.pyc
