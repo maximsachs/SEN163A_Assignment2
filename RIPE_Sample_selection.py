@@ -5,6 +5,9 @@
 
  IF the decompressed file is available then will use that as input, otherwise using the compressed file and decompressing on the fly.
 """
+import sys
+import os
+sys.path.insert(0, os.getcwd())
 
 import os
 import pickle
@@ -13,8 +16,6 @@ import pandas as pd
 import bisect
 import time
 import bz2
-import os
-import sys
 import json
 from tqdm import tqdm
 from eu_country_codes.eu_country_codes import european_country_codes
