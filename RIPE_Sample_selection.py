@@ -79,7 +79,7 @@ for i in range(n_files_to_process):
     filename = f'{dataset_type}-{day_to_get}T{i:02}00'
     files_to_process.append(filename)
 
-def perform_sampling_on_file(input_filename, shared_counter, batch_size=200000):
+def perform_sampling_on_file(input_filename, shared_counter, batch_size=500000):
     """
     Does the sample selection for 1 specific file.
     """
@@ -166,6 +166,7 @@ def perform_sampling_on_file(input_filename, shared_counter, batch_size=200000):
             shared_counter.value += batch_size
             count = 0
             output_file.write(line_batch)
+            line_batch = ""
         if n_lines_to_process and tot_count > n_lines_to_process:
             break
 
