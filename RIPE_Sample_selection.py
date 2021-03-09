@@ -79,7 +79,7 @@ for i in range(n_files_to_process):
     filename = f'{dataset_type}-{day_to_get}T{i:02}00'
     files_to_process.append(filename)
 
-def perform_sampling_on_file(input_filename, shared_counter, batch_size=500000):
+def perform_sampling_on_file(input_filename, shared_counter, batch_size=50000):
     """
     Does the sample selection for 1 specific file.
     """
@@ -193,7 +193,7 @@ if cpu_count > 1:
         # Quick sleep to give the processes time to start off.
         time.sleep(1)
         avg_per_second = np.nan
-        refresh_interval = 3 # Number of seconds between output updates.
+        refresh_interval = 2 # Number of seconds between output updates.
         while not all([job.ready() for job in jobs]):
             last_progresses.append(shared_counter.value)
             if len(last_progresses) > 2:
