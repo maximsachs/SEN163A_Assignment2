@@ -17,7 +17,7 @@ import os
 import sys
 import json
 from tqdm import tqdm
-from eu_country_codes import european_country_codes
+from eu_country_codes.eu_country_codes import european_country_codes
 import ipaddress
 import multiprocessing
 from collections import deque

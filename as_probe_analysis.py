@@ -1,7 +1,7 @@
 import os
 import pickle
 import pandas as pd
-from eu_country_codes import european_country_codes
+from eu_country_codes.eu_country_codes import european_country_codes
 
 dataset_folder = "PICKLE_Datasets"
 
