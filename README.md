@@ -3,6 +3,8 @@ https://atlas.ripe.net/docs/data_struct/#v5000
 
 ## Dependencies
 
+Make sure conda is installed correctly.
+
 ```
 conda create -n sen163a python=3.8
 conda activate sen163a
