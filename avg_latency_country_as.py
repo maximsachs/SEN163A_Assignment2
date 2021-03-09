@@ -21,7 +21,7 @@ import datetime as dt
 if __name__ == "__main__":
     start_time = time.time()
     cpu_count = max(1, multiprocessing.cpu_count()-2)
-    # cpu_count=1 # You can overwrite the cpu count to 1 here to run in single process mode.
+    cpu_count=1 # You can overwrite the cpu count to 1 here to run in single process mode.
     dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
     data_folder = "RIPE_Dataset" # The folder where the raw ping input data is stored.
     selected_data_output_folder = "RIPE_Preprocessed_Data" # The folder to put the selected sample files.
@@ -73,6 +73,8 @@ if __name__ == "__main__":
             
             # TODO: Do line level processing here!
             print(line)
+
+
 
             if n_lines_to_process and tot_count >= n_lines_to_process:
                 break
