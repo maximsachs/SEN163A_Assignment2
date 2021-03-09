@@ -25,9 +25,11 @@ from collections import deque
 import humanize
 import datetime as dt
 
-def perform_sampling_on_file(input_filename, shared_counter, batch_size=50000):
+def perform_sampling_on_file(input_filename, shared_counter, force_reprocess=False, batch_size=50000):
     """
     Does the sample selection for 1 specific file.
+    By default will skip the file if it already exists in the processed data output folder.
+    Set the parameter force_reprocess to True to reprocess the file even if it already exists.
     """
     # IF the decompressed file is available then will use that as input,
     # otherwise using the compressed file and decompressing on the fly
@@ -50,9 +52,15 @@ def perform_sampling_on_file(input_filename, shared_counter, batch_size=50000):
         if not os.path.exists(out_folder_decompressed):
             os.mkdir(out_folder_decompressed)
         output_filename = os.path.join(out_folder_decompressed, input_filename)
+        if os.path.exists(output_filename) and not force_reprocess:
+            print(f"File {input_filename} already exists in {out_folder_decompressed}. Skipping reprocessing!\n")
+            return
         output_file = open(output_filename, 'w') 
     elif file_mode == "bz2":
         output_filename = os.path.join(selected_data_output_folder, input_filename+'.bz2')
+        if os.path.exists(output_filename) and not force_reprocess:
+            print(f"File {input_filename} already exists in {selected_data_output_folder}. Skipping reprocessing!\n")
+            return
         output_file = bz2.open(output_filename, 'wt') 
     tot_count = 0
     count = 0
@@ -138,6 +146,7 @@ if __name__ == "__main__":
     n_lines_to_process = 0 # Set to 0 or False to run the whole dataset.
     use_custom_json_parser = True # When False uses normal json.load, when True, uses direct string based parsing, this is slightly faster than the json loads.
     ip_versions = [4] # Add a 6 to this list if you also want to analyse the ipv6.
+    force_reprocess = False # By default will skip the file if it already exists in the processed data output folder.
 
     if not os.path.exists(selected_data_output_folder):
         os.mkdir(selected_data_output_folder)
@@ -189,7 +198,7 @@ if __name__ == "__main__":
         with multiprocessing.Pool(processes=cpu_count) as pool:
             jobs = []
             for input_filename in files_to_process:
-                new_job = pool.apply_async(func=perform_sampling_on_file, args=(input_filename, shared_counter))
+                new_job = pool.apply_async(func=perform_sampling_on_file, args=(input_filename, shared_counter, force_reprocess))
                 jobs.append(new_job)
             pool.close()
             # Quick sleep to give the processes time to start off.
@@ -211,7 +220,7 @@ if __name__ == "__main__":
             print(f"\rProcessed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}                        ")
     else:
         for input_filename in files_to_process:
-            perform_sampling_on_file(input_filename, shared_counter)
+            perform_sampling_on_file(input_filename, shared_counter, force_reprocess)
 
 
 
