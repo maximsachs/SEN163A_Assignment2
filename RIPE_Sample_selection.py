@@ -34,7 +34,7 @@ day_to_get = "2021-02-20"
 dataset_type = "ping"
 n_files_to_process = 24 # Set to 1 for first file, set to 24 for all the files in the folder.
 n_lines_to_process = 0 # Set to 0 or False to run the whole dataset.
-use_custom_json_parser = True # When False uses normal json.load, when True, uses direct string based parsing.
+use_custom_json_parser = True # When False uses normal json.load, when True, uses direct string based parsing, this is slightly faster than the json loads.
 ip_versions = [4] # Add a 6 to this list if you also want to analyse the ipv6.
 
 if not os.path.exists(selected_data_output_folder):
@@ -46,6 +46,8 @@ if 4 in ip_versions:
     ipv4_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.CSV", "IP2LOCATION-LITE-DB1.CSV"), 
                                  names=["start_ip", "end_ip", "country_code", "country_long"],
                                  dtype={"start_ip": np.uint64, "end_ip": np.uint64, "country_code": str, "country_long": str})
+    # Making sure the ip ranges are scorted in ascending order (needed later for the bisect)
+    ipv4_locations.sort_values("end_ip", ascending=True, inplace=True)
     # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search one column only.
     predicted_start_ip = ipv4_locations["end_ip"][:-1].values+1
     actual_start_ip = ipv4_locations["start_ip"][1:].values
@@ -55,6 +57,7 @@ if 6 in ip_versions:
     ipv6_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.IPV6.CSV", "IP2LOCATION-LITE-DB1.IPV6.CSV"),
                                  names=["start_ip", "end_ip", "country_code", "country_long"],
                                  dtype={"start_ip": np.float128, "end_ip": np.float128, "country_code": str, "country_long": str})
+    ipv6_locations.sort_values("end_ip", ascending=True, inplace=True)
     # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search one column only.
     predicted_start_ip = ipv6_locations["end_ip"][:-1].values+1
     actual_start_ip = ipv6_locations["start_ip"][1:].values
