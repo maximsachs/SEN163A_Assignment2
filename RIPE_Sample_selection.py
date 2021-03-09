@@ -7,8 +7,7 @@
 """
 import sys
 import os
-sys.path.insert(0, os.getcwd())
-
+sys.path.insert(0, os.getcwd()) # So that windows can find the contry codes module!
 import os
 import pickle
 import numpy as np
@@ -135,7 +134,7 @@ def perform_sampling_on_file(input_filename, shared_counter, force_reprocess=Fal
 
 if __name__ == "__main__":
     start_time = time.time()
-    cpu_count = max(1, multiprocessing.cpu_count()-2) 
+    cpu_count = max(1, multiprocessing.cpu_count()-2)
     # cpu_count=1 # You can overwrite the cpu count to 1 here to run in single process mode.
     dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
     data_folder = "RIPE_Dataset" # The folder where the raw ping input data is stored.
@@ -194,6 +193,7 @@ if __name__ == "__main__":
     shared_counter = multiprocessing.Manager().Value('i', 0)
     last_progresses = deque([], maxlen=60)
     print(f"Starting processing with {cpu_count} parallel tasks")
+
     if cpu_count > 1:
         with multiprocessing.Pool(processes=cpu_count) as pool:
             jobs = []
@@ -203,6 +203,7 @@ if __name__ == "__main__":
             pool.close()
             # Quick sleep to give the processes time to start off.
             time.sleep(1)
+
             avg_per_second = np.nan
             refresh_interval = 2 # Number of seconds between output updates.
             while not all([job.ready() for job in jobs]):
@@ -215,10 +216,12 @@ if __name__ == "__main__":
                 sys.stdout.write("\r" + progress_message)
                 sys.stdout.flush()
                 time.sleep(refresh_interval)
+
             pool.join()
             # Printing newline so we can print normally again.
             print(f"\rProcessed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}                        ")
     else:
+        
         for input_filename in files_to_process:
             perform_sampling_on_file(input_filename, shared_counter, force_reprocess)
 
