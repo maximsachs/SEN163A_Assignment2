@@ -25,66 +25,10 @@ from collections import deque
 import humanize
 import datetime as dt
 
-start_time = time.time()
-cpu_count = max(1, multiprocessing.cpu_count()-2) 
-# cpu_count=1 # You can overwrite the cpu count to 1 here to run in single process mode.
-dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
-data_folder = "RIPE_Dataset" # The folder where the raw ping input data is stored.
-selected_data_output_folder = "RIPE_Preprocessed_Data" # The folder to put the selected sample files.
-day_to_get = "2021-02-20"
-dataset_type = "ping"
-n_files_to_process = 24 # Set to 1 for first file, set to 24 for all the files in the folder.
-n_lines_to_process = 0 # Set to 0 or False to run the whole dataset.
-use_custom_json_parser = True # When False uses normal json.load, when True, uses direct string based parsing, this is slightly faster than the json loads.
-ip_versions = [4] # Add a 6 to this list if you also want to analyse the ipv6.
-
-if not os.path.exists(selected_data_output_folder):
-    os.mkdir(selected_data_output_folder)
-
-# Loading the GEO IP lookup tables.
-ip_country_lookup = {}
-if 4 in ip_versions:
-    ipv4_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.CSV", "IP2LOCATION-LITE-DB1.CSV"), 
-                                 names=["start_ip", "end_ip", "country_code", "country_long"],
-                                 dtype={"start_ip": np.uint64, "end_ip": np.uint64, "country_code": str, "country_long": str})
-    # Making sure the ip ranges are scorted in ascending order (needed later for the bisect)
-    ipv4_locations.sort_values("end_ip", ascending=True, inplace=True)
-    # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search one column only.
-    predicted_start_ip = ipv4_locations["end_ip"][:-1].values+1
-    actual_start_ip = ipv4_locations["start_ip"][1:].values
-    np.testing.assert_array_equal(actual_start_ip, predicted_start_ip)
-    ip_country_lookup[4] = {"end_ip": ipv4_locations["end_ip"].values, "country_code": ipv4_locations["country_code"].values}
-if 6 in ip_versions:
-    ipv6_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.IPV6.CSV", "IP2LOCATION-LITE-DB1.IPV6.CSV"),
-                                 names=["start_ip", "end_ip", "country_code", "country_long"],
-                                 dtype={"start_ip": np.float128, "end_ip": np.float128, "country_code": str, "country_long": str})
-    ipv6_locations.sort_values("end_ip", ascending=True, inplace=True)
-    # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search one column only.
-    predicted_start_ip = ipv6_locations["end_ip"][:-1].values+1
-    actual_start_ip = ipv6_locations["start_ip"][1:].values
-    np.testing.assert_array_equal(actual_start_ip, predicted_start_ip)
-    ip_country_lookup[6] = {"end_ip": ipv6_locations["end_ip"].values, "country_code": ipv6_locations["country_code"].values}
-
-
-with open(os.path.join(dataset_folder, 'AS_in_EU_with_Probe.pkl'), 'rb') as f:
-    AS_in_EU_with_Probe = pickle.load(f)
-    # print(AS_in_EU_with_Probe)
-
-# Getting a set of all the probes we want to analyse.
-prbs_to_select = set(np.concatenate(AS_in_EU_with_Probe["prb_ids"].values, axis=0))
-
-files_to_process = []
-
-for i in range(n_files_to_process):
-    # https://data-store.ripe.net/datasets/atlas-daily-dumps/2021-02-20/ping-2021-02-20T0000.bz2
-    filename = f'{dataset_type}-{day_to_get}T{i:02}00'
-    files_to_process.append(filename)
-
 def perform_sampling_on_file(input_filename, shared_counter, batch_size=50000):
     """
     Does the sample selection for 1 specific file.
     """
-
     # IF the decompressed file is available then will use that as input,
     # otherwise using the compressed file and decompressing on the fly
     decomFilename = os.path.join(data_folder, "decompressed", input_filename)
@@ -180,8 +124,64 @@ def perform_sampling_on_file(input_filename, shared_counter, batch_size=50000):
     shared_counter.value += count
     return
 
-# Setting up progress monitoring.
+
 if __name__ == "__main__":
+    start_time = time.time()
+    cpu_count = max(1, multiprocessing.cpu_count()-2) 
+    # cpu_count=1 # You can overwrite the cpu count to 1 here to run in single process mode.
+    dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
+    data_folder = "RIPE_Dataset" # The folder where the raw ping input data is stored.
+    selected_data_output_folder = "RIPE_Preprocessed_Data" # The folder to put the selected sample files.
+    day_to_get = "2021-02-20"
+    dataset_type = "ping"
+    n_files_to_process = 24 # Set to 1 for first file, set to 24 for all the files in the folder.
+    n_lines_to_process = 0 # Set to 0 or False to run the whole dataset.
+    use_custom_json_parser = True # When False uses normal json.load, when True, uses direct string based parsing, this is slightly faster than the json loads.
+    ip_versions = [4] # Add a 6 to this list if you also want to analyse the ipv6.
+
+    if not os.path.exists(selected_data_output_folder):
+        os.mkdir(selected_data_output_folder)
+
+    # Loading the GEO IP lookup tables.
+    ip_country_lookup = {}
+    if 4 in ip_versions:
+        ipv4_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.CSV", "IP2LOCATION-LITE-DB1.CSV"), 
+                                    names=["start_ip", "end_ip", "country_code", "country_long"],
+                                    dtype={"start_ip": np.uint64, "end_ip": np.uint64, "country_code": str, "country_long": str})
+        # Making sure the ip ranges are scorted in ascending order (needed later for the bisect)
+        ipv4_locations.sort_values("end_ip", ascending=True, inplace=True)
+        # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search one column only.
+        predicted_start_ip = ipv4_locations["end_ip"][:-1].values+1
+        actual_start_ip = ipv4_locations["start_ip"][1:].values
+        np.testing.assert_array_equal(actual_start_ip, predicted_start_ip)
+        ip_country_lookup[4] = {"end_ip": ipv4_locations["end_ip"].values, "country_code": ipv4_locations["country_code"].values}
+    if 6 in ip_versions:
+        ipv6_locations = pd.read_csv(os.path.join("IP2LOCATION-LITE-DB1.IPV6.CSV", "IP2LOCATION-LITE-DB1.IPV6.CSV"),
+                                    names=["start_ip", "end_ip", "country_code", "country_long"],
+                                    dtype={"start_ip": np.float128, "end_ip": np.float128, "country_code": str, "country_long": str})
+        ipv6_locations.sort_values("end_ip", ascending=True, inplace=True)
+        # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search one column only.
+        predicted_start_ip = ipv6_locations["end_ip"][:-1].values+1
+        actual_start_ip = ipv6_locations["start_ip"][1:].values
+        np.testing.assert_array_equal(actual_start_ip, predicted_start_ip)
+        ip_country_lookup[6] = {"end_ip": ipv6_locations["end_ip"].values, "country_code": ipv6_locations["country_code"].values}
+
+
+    with open(os.path.join(dataset_folder, 'AS_in_EU_with_Probe.pkl'), 'rb') as f:
+        AS_in_EU_with_Probe = pickle.load(f)
+        # print(AS_in_EU_with_Probe)
+
+    # Getting a set of all the probes we want to analyse.
+    prbs_to_select = set(np.concatenate(AS_in_EU_with_Probe["prb_ids"].values, axis=0))
+
+    files_to_process = []
+
+    for i in range(n_files_to_process):
+        # https://data-store.ripe.net/datasets/atlas-daily-dumps/2021-02-20/ping-2021-02-20T0000.bz2
+        filename = f'{dataset_type}-{day_to_get}T{i:02}00'
+        files_to_process.append(filename)
+    
+    # Setting up progress monitoring.
     shared_counter = multiprocessing.Manager().Value('i', 0)
     last_progresses = deque([], maxlen=60)
     print(f"Starting processing with {cpu_count} parallel tasks")
