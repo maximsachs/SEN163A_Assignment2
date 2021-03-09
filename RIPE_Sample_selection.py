@@ -181,37 +181,38 @@ def perform_sampling_on_file(input_filename, shared_counter, batch_size=50000):
     return
 
 # Setting up progress monitoring.
-shared_counter = multiprocessing.Manager().Value('i', 0)
-last_progresses = deque([], maxlen=60)
-print(f"Starting processing with {cpu_count} parallel tasks")
-if cpu_count > 1:
-    with multiprocessing.Pool(processes=cpu_count) as pool:
-        jobs = []
+if __name__ == "__main__":
+    shared_counter = multiprocessing.Manager().Value('i', 0)
+    last_progresses = deque([], maxlen=60)
+    print(f"Starting processing with {cpu_count} parallel tasks")
+    if cpu_count > 1:
+        with multiprocessing.Pool(processes=cpu_count) as pool:
+            jobs = []
+            for input_filename in files_to_process:
+                new_job = pool.apply_async(func=perform_sampling_on_file, args=(input_filename, shared_counter))
+                jobs.append(new_job)
+            pool.close()
+            # Quick sleep to give the processes time to start off.
+            time.sleep(1)
+            avg_per_second = np.nan
+            refresh_interval = 2 # Number of seconds between output updates.
+            while not all([job.ready() for job in jobs]):
+                last_progresses.append(shared_counter.value)
+                if len(last_progresses) > 2:
+                    avg_per_second = np.mean(np.diff(last_progresses))/refresh_interval
+                running_duration = time.time() - start_time
+                human_duration = humanize.time.precisedelta(dt.timedelta(seconds=running_duration))
+                progress_message = f"[{human_duration}] Processed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}                            "
+                sys.stdout.write("\r" + progress_message)
+                sys.stdout.flush()
+                time.sleep(refresh_interval)
+            pool.join()
+            # Printing newline so we can print normally again.
+            print(f"\rProcessed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}                        ")
+    else:
         for input_filename in files_to_process:
-            new_job = pool.apply_async(func=perform_sampling_on_file, args=(input_filename, shared_counter))
-            jobs.append(new_job)
-        pool.close()
-        # Quick sleep to give the processes time to start off.
-        time.sleep(1)
-        avg_per_second = np.nan
-        refresh_interval = 2 # Number of seconds between output updates.
-        while not all([job.ready() for job in jobs]):
-            last_progresses.append(shared_counter.value)
-            if len(last_progresses) > 2:
-                avg_per_second = np.mean(np.diff(last_progresses))/refresh_interval
-            running_duration = time.time() - start_time
-            human_duration = humanize.time.precisedelta(dt.timedelta(seconds=running_duration))
-            progress_message = f"[{human_duration}] Processed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}                            "
-            sys.stdout.write("\r" + progress_message)
-            sys.stdout.flush()
-            time.sleep(refresh_interval)
-        pool.join()
-        # Printing newline so we can print normally again.
-        print(f"\rProcessed {humanize.intword(shared_counter.value)} lines so far, lines per second: {humanize.intword(avg_per_second)}                        ")
-else:
-    for input_filename in files_to_process:
-        perform_sampling_on_file(input_filename, shared_counter)
+            perform_sampling_on_file(input_filename, shared_counter)
 
 
 
-print("Took", humanize.time.precisedelta(dt.timedelta(seconds=time.time()-start_time)), "seconds")
+    print("Took", humanize.time.precisedelta(dt.timedelta(seconds=time.time()-start_time)), "seconds")
