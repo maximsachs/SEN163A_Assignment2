@@ -36,8 +36,12 @@ if __name__ == "__main__":
         AS_in_EU_with_Probe = pickle.load(f)
         AS_in_EU_with_Probe.set_index("ASN", inplace=True)
         print(AS_in_EU_with_Probe)
-
-    with open(os.path.join(dataset_folder, f'country_asn_avg_latencies_ip_{"_".join([ str(i) for i in ip_versions])}.pkl')), 'rb') as f:
+    
+    avg_latencies_path = os.path.join(dataset_folder, f'country_asn_avg_latencies_ip_{"_".join([ str(i) for i in ip_versions])}.pkl')
+    if not os.path.exists(avg_latencies_path):
+        print(f"The requested country_asn_avg_latencies file for ip_versions {str(ip_versions)} have not been found!")
+        print(f"Make sure to select the same ip_versions in compute_country_asn_avg_latencies.py")
+    with open(avg_latencies_path, 'rb') as f:
         country_asn_avg_latencies = pickle.load(f)
         print(country_asn_avg_latencies)
 
@@ -60,8 +64,8 @@ if __name__ == "__main__":
     print(country_asn_avg_latencies.isna().sum())
     # General Data cleaning step, we make the requirement that the ASN can actually reach each country.
     # Even though its definitely introducing a sampling bias, dropping all ASN for which we don't have a avg latency for each country.
-    country_asn_avg_latencies.dropna(axis=1, inplace=True)
-    print(country_asn_avg_latencies)
+    # country_asn_avg_latencies.dropna(axis=1, inplace=True)
+    # print(country_asn_avg_latencies)
 
     # Approach 1. We just take the 4 ASN with the average best performance.
     mean_asn_performance = country_asn_avg_latencies.mean(axis=1)
