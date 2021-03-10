@@ -77,13 +77,14 @@ if __name__ == "__main__":
     print()
 
     # Approach 2. K-Center
-    acceptable_num_countries_missed = 1
+    print("Smort approach, doing educated guesses for networks to use.")
+    acceptable_num_countries_missed = 2
     iterations = 10000
     max_search_depth = 10000
     potential_networks = {}
     n_networks = 4 # How many networks to select.
 
-    # Removing outlier countries from the analysis!
+    # Could potentially removing outlier countries from the analysis.
     countries_to_exclude = [] # "MT"
     for country_code in countries_to_exclude:
         country_asn_avg_latencies.drop(country_code, axis=1, inplace=True)
@@ -142,25 +143,15 @@ if __name__ == "__main__":
     df_potential_networks.index = list(range(df_potential_networks.shape[0]))
     df_potential_networks.sort_values("eu_avg_performance", inplace=True)
 
-    df_potential_networks_with_missed = df_potential_networks[df_potential_networks["n_countries_missed"] > 0]
-    if df_potential_networks_with_missed.shape[0] > 0:
-        best_row_with_missed = df_potential_networks_with_missed.iloc[0]
-        selected_asn_with_missed = country_asn_avg_latencies.loc[best_row_with_missed["selected_networks"]]
-        selected_performance_per_country_with_missed = selected_asn_with_missed.min().to_frame().transpose()
-        print(f"When allowing at most {acceptable_num_countries_missed} country to be missed, then following is top 5 best performance:")
-        print(df_potential_networks_with_missed.head())
-        print("Per country performance for the best combination of networks", best_row_with_missed["selected_networks"])
-        print(selected_performance_per_country_with_missed)
-
-    df_potential_networks_no_misses = df_potential_networks[df_potential_networks["n_countries_missed"] == 0]
-    if df_potential_networks_no_misses.shape[0] > 0:
-        best_row_no_misses = df_potential_networks_no_misses.iloc[0]
-        selected_asn_no_misses = country_asn_avg_latencies.loc[best_row_no_misses["selected_networks"]]
-        selected_performance_per_country_no_misses = selected_asn_no_misses.min().to_frame().transpose()
-        print(f"\nWhen allowing no countries to be missed, then following is top 5 best performance:")
-        print(df_potential_networks_no_misses.head())
-        print("Per country performance for the best combination of networks", best_row_no_misses["selected_networks"])
-        print(selected_performance_per_country_no_misses)
-
+    for n_countries_missed in df_potential_networks["n_countries_missed"].unique():
+        df_potential_networks_with_missed = df_potential_networks[df_potential_networks["n_countries_missed"] == n_countries_missed]
+        if df_potential_networks_with_missed.shape[0] > 0:
+            best_row_with_missed = df_potential_networks_with_missed.iloc[0]
+            selected_asn_with_missed = country_asn_avg_latencies.loc[best_row_with_missed["selected_networks"]]
+            selected_performance_per_country_with_missed = selected_asn_with_missed.min().to_frame().transpose()
+            print(f"\nWhen allowing at most {n_countries_missed} country to be missed, then following is top 5 best performance:")
+            print(df_potential_networks_with_missed.head())
+            print("Per country performance for the best combination of networks", best_row_with_missed["selected_networks"])
+            print(selected_performance_per_country_with_missed)
 
 
