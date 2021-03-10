@@ -96,6 +96,12 @@ if __name__ == "__main__":
     n_lines_to_process = 0 # Set to 0 or False to run the whole dataset.
     ip_versions = [4, 6] # Add a 6 to this list if you also want to analyse the ipv6.
     dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
+    force_reprocess = False # By default will skip the file if it already exists in the processed data output folder.
+
+    
+    output_file = os.path.join(dataset_folder, f'country_asn_avg_latencies_ip_{"_".join([ str(i) for i in ip_versions])}.pkl')
+    if os.path.exists(output_file) and not force_reprocess:
+        raise Exception(f"File {output_file} already exists in {dataset_folder}. Skipping reprocessing!\n")
 
     with open(os.path.join(dataset_folder, 'AS_in_EU_with_Probe.pkl'), 'rb') as f:
         AS_in_EU_with_Probe = pickle.load(f)
@@ -173,7 +179,8 @@ if __name__ == "__main__":
     # Turning results to a dataframe. And saving it as pickel
     df_counry_asn_avg_lat = pd.DataFrame(data=counry_asn_avg_latencies)
     print(df_counry_asn_avg_lat)
-    with open(os.path.join(dataset_folder, f'country_asn_avg_latencies_ip_{"_".join([ str(i) for i in ip_versions])}.pkl'), 'wb') as outfile:
+    
+    with open(output_file, 'wb') as outfile:
         pickle.dump(df_counry_asn_avg_lat, outfile)
 
     print("Took", humanize.time.precisedelta(dt.timedelta(seconds=time.time()-start_time)), "seconds")

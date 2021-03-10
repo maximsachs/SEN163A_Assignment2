@@ -1,3 +1,5 @@
 python RIPE_downloader.py
 python as_probe_analysis.py
 python RIPE_Sample_selection.py
+python compute_country_asn_avg_latencies.py
+python postprocessing_country_asn_avg_latency.py

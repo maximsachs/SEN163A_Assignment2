@@ -19,6 +19,8 @@ sudo apt install parallel
 
 ## How to use:
 
+Do not run the code in an IPython consule! This will break the multiprocessing setup. Please run the scripts using a terminal.
+
 0.  Set up the virtual environment and install the required python packages.
 1.  **After having installed the dependencies, run the `I_want_it_all.sh` bash script to run the whole analysis automatically. Or go step by step with the instructions given below:**
 2.  Run the `RIPE_downloader.py`, which downloads the RIPE ping dataset for the day in question and stores them in the RIPE_Dataset folder. The input files will take up around 27GB.

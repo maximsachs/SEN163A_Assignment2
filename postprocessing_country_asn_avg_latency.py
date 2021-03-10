@@ -32,6 +32,14 @@ if __name__ == "__main__":
     dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
     ip_versions = [4, 6] # Add a 6 to this list if you also want to analyse the ipv6.
 
+    #### Settings for the optimiser:
+    acceptable_num_countries_missed = 2
+    iterations = 20000
+    max_search_depth = 10000
+    potential_networks = {}
+    n_networks = 4 # How many networks to select.
+    show_top_n = 5
+
     with open(os.path.join(dataset_folder, 'AS_in_EU_with_Probe.pkl'), 'rb') as f:
         AS_in_EU_with_Probe = pickle.load(f)
         AS_in_EU_with_Probe.set_index("ASN", inplace=True)
@@ -61,8 +69,9 @@ if __name__ == "__main__":
 
 
     # Since we are only allowed to place four servers,  determine the best four datacentersbased on the total latency for all countries.  Report your findings and your procedureto obtain them.  Also include the average latency for each country.
-
-    print(country_asn_avg_latencies.isna().sum())
+    print("Number of nan samples per country")
+    print(country_asn_avg_latencies.isna().sum().to_frame().transpose())
+    print()
     # General Data cleaning step, we make the requirement that the ASN can actually reach each country.
     # Even though its definitely introducing a sampling bias, dropping all ASN for which we don't have a avg latency for each country.
     # country_asn_avg_latencies.dropna(axis=1, inplace=True)
@@ -79,12 +88,7 @@ if __name__ == "__main__":
 
     # Approach 2. K-Center
     print("Smort approach, doing educated guesses for networks to use.")
-    acceptable_num_countries_missed = 2
-    iterations = 10000
-    max_search_depth = 10000
-    potential_networks = {}
-    n_networks = 4 # How many networks to select.
-
+    
     # Could potentially removing outlier countries from the analysis.
     countries_to_exclude = [] # "MT"
     for country_code in countries_to_exclude:
@@ -137,7 +141,8 @@ if __name__ == "__main__":
                 selected_asn = country_asn_avg_latencies.loc[selected_networks]
                 selected_performance_per_country = selected_asn.min()
                 eu_avg_performance = selected_performance_per_country.mean()
-                potential_networks[network_set_label] = {"selected_networks": selected_networks, "eu_avg_performance": eu_avg_performance, "countries_missed": countries_not_yet_reached, "n_countries_missed": len(countries_not_yet_reached)}
+                missed_countries_long = [countries.get(country_code, country_code) for country_code in countries_not_yet_reached]
+                potential_networks[network_set_label] = {"selected_networks": selected_networks, "eu_avg_performance": eu_avg_performance, "countries_missed": missed_countries_long, "n_countries_missed": len(countries_not_yet_reached)}
 
     # Finding the best from all the potential networks:
     df_potential_networks = pd.DataFrame(potential_networks).transpose()
@@ -145,15 +150,15 @@ if __name__ == "__main__":
     df_potential_networks.sort_values("eu_avg_performance", inplace=True)
 
     for n_countries_missed in sorted(df_potential_networks["n_countries_missed"].unique()):
-        df_potential_networks_with_missed = df_potential_networks[df_potential_networks["n_countries_missed"] == n_countries_missed]
+        df_potential_networks_with_missed = df_potential_networks[df_potential_networks["n_countries_missed"] == n_countries_missed].iloc[:show_top_n]
         if df_potential_networks_with_missed.shape[0] > 0:
             best_row_with_missed = df_potential_networks_with_missed.iloc[0]
             selected_asn_with_missed = country_asn_avg_latencies.loc[best_row_with_missed["selected_networks"]]
             selected_performance_per_country_with_missed = selected_asn_with_missed.min().to_frame().transpose()
-            print(f"\nWhen allowing at most {n_countries_missed} country to be missed, then following is top 5 best performance:")
-            print(df_potential_networks_with_missed.head())
-            print("Per country performance for the best combination of networks", best_row_with_missed["selected_networks"])
-            print(AS_in_EU_with_Probe.loc[best_row_with_missed["selected_networks"], ["Country_Long", "prb_count", "Name", "type"]])
-            print(selected_performance_per_country_with_missed)
+            print(f"\nWhen allowing at most {n_countries_missed} country to be missed, then following is top {show_top_n} best performance:")
+            print("Per country performance for the best combination of networks", best_row_with_missed["selected_networks"], "\n")
+            print(df_potential_networks_with_missed[["selected_networks", "eu_avg_performance", "countries_missed"]].head().to_latex(index=False).replace("[]", "-").replace("[", "").replace("]", ""))
+            print(AS_in_EU_with_Probe.loc[best_row_with_missed["selected_networks"], ["Country_Long", "Name", "type"]].to_latex().replace("[]", "-").replace("[", "").replace("]", ""))
+            print(selected_performance_per_country_with_missed.to_latex(index=False).replace("[]", "-").replace("[", "").replace("]", ""))
 
 
