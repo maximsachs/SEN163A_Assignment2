@@ -55,3 +55,16 @@ if __name__ == "__main__":
 
 
     # Since we are only allowed to place four servers,  determine the best four datacentersbased on the total latency for all countries.  Report your findings and your procedureto obtain them.  Also include the average latency for each country.
+
+    print(country_asn_avg_latencies.isna().sum())
+    # General Data cleaning step, we make the requirement that the ASN can actually reach each country.
+    # Even though its definitely introducing a sampling bias, dropping all ASN for which we don't have a avg latency for each country.
+    country_asn_avg_latencies.dropna(axis=1, inplace=True)
+    print(country_asn_avg_latencies)
+
+    # Approach 1. We just take the 4 ASN with the average best performance.
+    mean_asn_performance = country_asn_avg_latencies.mean(axis=1)
+    mean_asn_performance.sort_values(inplace=True)
+    selected_asn_index = mean_asn_performance.index[:4]
+    selected_asn = country_asn_avg_latencies.loc[selected_asn_index]
+    print(selected_asn)

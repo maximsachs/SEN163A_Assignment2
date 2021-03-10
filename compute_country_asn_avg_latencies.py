@@ -53,19 +53,20 @@ def process_file(input_filename, shared_counter, batch_size=100000):
         tot_count += 1
         
         line_dict = json.loads(line)
-        
-        # Identify the AS that the probe is in, if no AS then move on.
-        # This approach implicitly handles when there are multiple probes within one AS.
-        asn = prb_id_to_asn.get(line_dict["prb_id"], False)
-        if asn:
-            country_code = line_dict["country_code"] 
-            avg_latency = line_dict["avg"] 
-            # In some samples, there appears to be no result, because ping never returned, then avg = -1. So:
-            # e.g.: {"fw":5020,"mver":"2.2.1","lts":5,"dst_name":"185.162.183.222","af":4,"dst_addr":"185.162.183.222","src_addr":"93.174.194.183","proto":"ICMP","size":64,"result":[{"x":"*"},{"x":"*"},{"x":"*"}],"dup":0,"rcvd":0,"sent":3,"min":-1,"max":-1,"avg":-1,"msm_id":23171304,"prb_id":6658,"timestamp":1613779317,"msm_name":"Ping","from":"93.174.194.183","type":"ping","group_id":23171303,"step":240,"country_code":"PT"}
-            if avg_latency > 0:
-                # Increment cumulative avg, and sample count.
-                cumulative_latency_counter[country_code][asn]["cumulative_avg"] += avg_latency
-                cumulative_latency_counter[country_code][asn]["count"] += 1
+
+        if line_dict["af"] in ip_versions:
+            # Identify the AS that the probe is in, if no AS then move on.
+            # This approach implicitly handles when there are multiple probes within one AS.
+            asn = prb_id_to_asn.get(line_dict["prb_id"], False)
+            if asn:
+                country_code = line_dict["country_code"] 
+                avg_latency = line_dict["avg"] 
+                # In some samples, there appears to be no result, because ping never returned, then avg = -1. So:
+                # e.g.: {"fw":5020,"mver":"2.2.1","lts":5,"dst_name":"185.162.183.222","af":4,"dst_addr":"185.162.183.222","src_addr":"93.174.194.183","proto":"ICMP","size":64,"result":[{"x":"*"},{"x":"*"},{"x":"*"}],"dup":0,"rcvd":0,"sent":3,"min":-1,"max":-1,"avg":-1,"msm_id":23171304,"prb_id":6658,"timestamp":1613779317,"msm_name":"Ping","from":"93.174.194.183","type":"ping","group_id":23171303,"step":240,"country_code":"PT"}
+                if avg_latency > 0:
+                    # Increment cumulative avg, and sample count.
+                    cumulative_latency_counter[country_code][asn]["cumulative_avg"] += avg_latency
+                    cumulative_latency_counter[country_code][asn]["count"] += 1
 
         # Every batch_size lines we update the global counter variable.
         if count % batch_size == 0:
@@ -84,8 +85,7 @@ def process_file(input_filename, shared_counter, batch_size=100000):
 
 if __name__ == "__main__":
     start_time = time.time()
-    # Not using as many cores as for the previous, as we are now bottlenecked by disk read speeds. For me 3 cores is best. Limiting to at most be the number of cores in the system.
-    cpu_count = min(3, multiprocessing.cpu_count())
+    cpu_count = max(1, multiprocessing.cpu_count()-2)
     # cpu_count = 1 # You can overwrite the cpu count to 1 here to run in single process mode.
     dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
     data_folder = "RIPE_Dataset" # The folder where the raw ping input data is stored.
@@ -94,6 +94,7 @@ if __name__ == "__main__":
     dataset_type = "ping"
     n_files_to_process = 24 # Set to 1 for first file, set to 24 for all the files in the folder.
     n_lines_to_process = 0 # Set to 0 or False to run the whole dataset.
+    ip_versions = [4, 6] # Add a 6 to this list if you also want to analyse the ipv6.
     dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
 
     with open(os.path.join(dataset_folder, 'AS_in_EU_with_Probe.pkl'), 'rb') as f:
@@ -172,5 +173,7 @@ if __name__ == "__main__":
     # Turning results to a dataframe. And saving it as pickel
     df_counry_asn_avg_lat = pd.DataFrame(data=counry_asn_avg_latencies)
     print(df_counry_asn_avg_lat)
-    with open(os.path.join(dataset_folder, 'country_asn_avg_latencies.pkl'), 'wb') as outfile:
+    with open(os.path.join(dataset_folder, f'country_asn_avg_latencies_ip_{"_".join(ip_versions)}.pkl'), 'wb') as outfile:
         pickle.dump(df_counry_asn_avg_lat, outfile)
+
+    print("Took", humanize.time.precisedelta(dt.timedelta(seconds=time.time()-start_time)), "seconds")

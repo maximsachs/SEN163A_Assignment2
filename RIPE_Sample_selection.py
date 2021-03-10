@@ -44,7 +44,7 @@ def perform_sampling_on_file(input_filename, shared_counter, force_reprocess=Fal
         print(f"{input_filename} does not exist, check your settings and are is all of the RIPE data downloaded?")
         return
     
-    print(f"\rBeginning processing of file {input_filename} in \"{file_mode}\" mode.\n")
+    print(f"\rBeginning processing of file {input_filename} in \"{file_mode}\" mode.                         \n")
 
     if file_mode == "decompressed":
         out_folder_decompressed = os.path.join(selected_data_output_folder, "decompressed")
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     n_files_to_process = 24 # Set to 1 for first file, set to 24 for all the files in the folder.
     n_lines_to_process = 0 # Set to 0 or False to run the whole dataset.
     use_custom_json_parser = True # When False uses normal json.load, when True, uses direct string based parsing, this is slightly faster than the json loads.
-    ip_versions = [4] # Add a 6 to this list if you also want to analyse the ipv6.
+    ip_versions = [4, 6] # Add a 6 to this list if you also want to analyse the ipv6.
     force_reprocess = False # By default will skip the file if it already exists in the processed data output folder.
 
     if not os.path.exists(selected_data_output_folder):
@@ -171,7 +171,11 @@ if __name__ == "__main__":
         # Checking that there is no gaps here, because then we can be sure that all ips are covered if we simply search one column only.
         predicted_start_ip = ipv6_locations["end_ip"][:-1].values+1
         actual_start_ip = ipv6_locations["start_ip"][1:].values
-        np.testing.assert_array_equal(actual_start_ip, predicted_start_ip)
+        try:
+            np.testing.assert_array_equal(actual_start_ip, predicted_start_ip)
+        except Exception as e: 
+            print("Assertion error for the IPV6 data, there may be a gap in the dataset?")
+            print(e)
         ip_country_lookup[6] = {"end_ip": ipv6_locations["end_ip"].values, "country_code": ipv6_locations["country_code"].values}
 
 
