@@ -94,7 +94,6 @@ if __name__ == "__main__":
     dataset_type = "ping"
     n_files_to_process = 24 # Set to 1 for first file, set to 24 for all the files in the folder.
     n_lines_to_process = 0 # Set to 0 or False to run the whole dataset.
-    use_custom_json_parser = True # When False uses normal json.load, when True, uses direct string based parsing, this is slightly faster than the json loads.
     dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
 
     with open(os.path.join(dataset_folder, 'AS_in_EU_with_Probe.pkl'), 'rb') as f:
@@ -145,6 +144,7 @@ if __name__ == "__main__":
                 sys.stdout.flush()
                 time.sleep(refresh_interval)
             # Getting the results from each job and appending them to the results array.
+            print("Getting results from jobs:")
             for job in tqdm(jobs):
                 results.append(job.get())
     else:
@@ -166,6 +166,7 @@ if __name__ == "__main__":
     counry_asn_avg_latencies = defaultdict(lambda: defaultdict(lambda: 0))
     for country_code, country_samples in total_cumulative_latency_counter.items():
         for asn, asn_data in country_samples.items():
+            # Further limitation of this approach, we do not check for a minimum number of samples/outlier. Might be interesting to require a min count of samples
             counry_asn_avg_latencies[country_code][asn] = total_cumulative_latency_counter[country_code][asn]["cumulative_avg"] / total_cumulative_latency_counter[country_code][asn]["count"]
 
     # Turning results to a dataframe. And saving it as pickel
