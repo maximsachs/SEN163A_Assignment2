@@ -35,7 +35,7 @@ def process_file(input_filename, shared_counter, batch_size=100000):
         print(f"{input_filename} does not exist, check your settings and are is all of the RIPE data downloaded?")
         raise
     
-    print(f"\rBeginning processing of file {input_filename} in \"{file_mode}\" mode.                     \n")
+    print(f"\rBeginning processing of file {input_filename} in \"{file_mode}\" mode.                                 \n")
 
     if cpu_count > 1:
         the_iterator = ping_dataset_file
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     # Turning results to a dataframe. And saving it as pickel
     df_counry_asn_avg_lat = pd.DataFrame(data=counry_asn_avg_latencies)
     print(df_counry_asn_avg_lat)
-    with open(os.path.join(dataset_folder, f'country_asn_avg_latencies_ip_{"_".join(ip_versions)}.pkl'), 'wb') as outfile:
+    with open(os.path.join(dataset_folder, f'country_asn_avg_latencies_ip_{"_".join([ str(i) for i in ip_versions])}.pkl'), 'wb') as outfile:
         pickle.dump(df_counry_asn_avg_lat, outfile)
 
     print("Took", humanize.time.precisedelta(dt.timedelta(seconds=time.time()-start_time)), "seconds")

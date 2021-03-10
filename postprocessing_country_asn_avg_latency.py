@@ -30,13 +30,14 @@ if __name__ == "__main__":
     day_to_get = "2021-02-20"
     dataset_type = "ping"
     dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
+    ip_versions = [4, 6] # Add a 6 to this list if you also want to analyse the ipv6.
 
     with open(os.path.join(dataset_folder, 'AS_in_EU_with_Probe.pkl'), 'rb') as f:
         AS_in_EU_with_Probe = pickle.load(f)
         AS_in_EU_with_Probe.set_index("ASN", inplace=True)
         print(AS_in_EU_with_Probe)
 
-    with open(os.path.join(dataset_folder, 'country_asn_avg_latencies.pkl'), 'rb') as f:
+    with open(os.path.join(dataset_folder, f'country_asn_avg_latencies_ip_{"_".join([ str(i) for i in ip_versions])}.pkl')), 'rb') as f:
         country_asn_avg_latencies = pickle.load(f)
         print(country_asn_avg_latencies)
 
