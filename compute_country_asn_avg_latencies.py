@@ -45,7 +45,7 @@ def process_file(input_filename, shared_counter, batch_size=100000):
     # Creating a default dict, so we don't have to initialise keys.
     # With three nested dicts, with default value 0.
     cumulative_latency_counter = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: 0)))
-    
+
     tot_count = 0
     count = 0
     for line in the_iterator:

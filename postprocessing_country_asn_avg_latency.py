@@ -72,4 +72,95 @@ if __name__ == "__main__":
     mean_asn_performance.sort_values(inplace=True)
     selected_asn_index = mean_asn_performance.index[:4]
     selected_asn = country_asn_avg_latencies.loc[selected_asn_index]
+    print("Dump approach, just the 4 networks with best average performance")
     print(selected_asn)
+    print()
+
+    # Approach 2. K-Center
+    acceptable_num_countries_missed = 1
+    iterations = 10000
+    max_search_depth = 10000
+    potential_networks = {}
+    n_networks = 4 # How many networks to select.
+
+    # Removing outlier countries from the analysis!
+    countries_to_exclude = [] # "MT"
+    for country_code in countries_to_exclude:
+        country_asn_avg_latencies.drop(country_code, axis=1, inplace=True)
+    # Setting the max allowed latency to be the worst one of the countries.
+    max_latency = country_asn_avg_latencies.min().max()
+    # Make sure that each country in europe is actually contained in our dataset:
+    unreachables = set(european_country_codes).difference(set(country_asn_avg_latencies.columns.values))
+    if unreachables:
+        unreachables_long = [countries.get(country_code, country_code) for country_code in unreachables]
+        print(f"The following countries cannot be reached {dict(zip(unreachables, unreachables_long))}, since they had no ping samples.")
+        european_country_codes = list(set(european_country_codes).intersection(set(country_asn_avg_latencies.columns.values)))
+
+    for it in tqdm(range(iterations)):
+        # We want to have a selection of networks that reaches each country in EU
+        countries_not_yet_reached = european_country_codes.copy()
+        # We shuffle the order of countries to reach randomly.
+        np.random.shuffle(countries_not_yet_reached)
+        selected_networks = []
+        # We repeat the sampling process until we found a set that reaches all countries:
+        depth = 0
+        while len(countries_not_yet_reached) > acceptable_num_countries_missed:
+            depth += 1
+            while len(selected_networks) < n_networks:
+                # As long as we have not yet reached the maximum number of networks, do:
+                # Pick a random country that we haven't reached yet:
+                country_code = countries_not_yet_reached.pop()
+                # For this random country, we try out what would happen if we pick the best network for this country:
+                best_network = country_asn_avg_latencies[country_code].idxmin()
+                # Then we get the row for this network:
+                network_row = country_asn_avg_latencies.loc[best_network]
+                # For each country identify if it is below our max latency threshold:
+                reached_countries = network_row[network_row <= max_latency].index.values
+                countries_not_yet_reached = list(set(countries_not_yet_reached).difference(set(reached_countries)))
+                np.random.shuffle(countries_not_yet_reached)
+                # We will have reached at least 1 country with this network, adding it to our selection:
+                selected_networks.append(best_network)
+                if len(countries_not_yet_reached) == 0:
+                    # If we have no more countries to reach we can prematurely break here!
+                    break
+            else:
+                break
+            if depth >= max_search_depth:
+                break
+
+        if len(countries_not_yet_reached) <= acceptable_num_countries_missed:
+            # We have not reached the goal of reaching all countries with this set of networks:
+            network_set_label = ",".join(sorted(selected_networks))
+            if not network_set_label in potential_networks:
+                selected_asn = country_asn_avg_latencies.loc[selected_networks]
+                selected_performance_per_country = selected_asn.min()
+                eu_avg_performance = selected_performance_per_country.mean()
+                potential_networks[network_set_label] = {"selected_networks": selected_networks, "eu_avg_performance": eu_avg_performance, "countries_missed": countries_not_yet_reached, "n_countries_missed": len(countries_not_yet_reached)}
+
+    # Finding the best from all the potential networks:
+    df_potential_networks = pd.DataFrame(potential_networks).transpose()
+    df_potential_networks.index = list(range(df_potential_networks.shape[0]))
+    df_potential_networks.sort_values("eu_avg_performance", inplace=True)
+
+    df_potential_networks_with_missed = df_potential_networks[df_potential_networks["n_countries_missed"] > 0]
+    if df_potential_networks_with_missed.shape[0] > 0:
+        best_row_with_missed = df_potential_networks_with_missed.iloc[0]
+        selected_asn_with_missed = country_asn_avg_latencies.loc[best_row_with_missed["selected_networks"]]
+        selected_performance_per_country_with_missed = selected_asn_with_missed.min().to_frame().transpose()
+        print(f"When allowing at most {acceptable_num_countries_missed} country to be missed, then following is top 5 best performance:")
+        print(df_potential_networks_with_missed.head())
+        print("Per country performance for the best combination of networks", best_row_with_missed["selected_networks"])
+        print(selected_performance_per_country_with_missed)
+
+    df_potential_networks_no_misses = df_potential_networks[df_potential_networks["n_countries_missed"] == 0]
+    if df_potential_networks_no_misses.shape[0] > 0:
+        best_row_no_misses = df_potential_networks_no_misses.iloc[0]
+        selected_asn_no_misses = country_asn_avg_latencies.loc[best_row_no_misses["selected_networks"]]
+        selected_performance_per_country_no_misses = selected_asn_no_misses.min().to_frame().transpose()
+        print(f"\nWhen allowing no countries to be missed, then following is top 5 best performance:")
+        print(df_potential_networks_no_misses.head())
+        print("Per country performance for the best combination of networks", best_row_no_misses["selected_networks"])
+        print(selected_performance_per_country_no_misses)
+
+
+
