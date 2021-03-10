@@ -143,7 +143,7 @@ if __name__ == "__main__":
     df_potential_networks.index = list(range(df_potential_networks.shape[0]))
     df_potential_networks.sort_values("eu_avg_performance", inplace=True)
 
-    for n_countries_missed in df_potential_networks["n_countries_missed"].unique():
+    for n_countries_missed in sorted(df_potential_networks["n_countries_missed"].unique()):
         df_potential_networks_with_missed = df_potential_networks[df_potential_networks["n_countries_missed"] == n_countries_missed]
         if df_potential_networks_with_missed.shape[0] > 0:
             best_row_with_missed = df_potential_networks_with_missed.iloc[0]
