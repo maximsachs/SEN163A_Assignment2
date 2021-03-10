@@ -35,6 +35,7 @@ if __name__ == "__main__":
     with open(os.path.join(dataset_folder, 'AS_in_EU_with_Probe.pkl'), 'rb') as f:
         AS_in_EU_with_Probe = pickle.load(f)
         AS_in_EU_with_Probe.set_index("ASN", inplace=True)
+        AS_in_EU_with_Probe["Country_Long"] = [countries.get(country_code, country_code) for country_code in AS_in_EU_with_Probe["Country"]]
         print(AS_in_EU_with_Probe)
     
     avg_latencies_path = os.path.join(dataset_folder, f'country_asn_avg_latencies_ip_{"_".join([ str(i) for i in ip_versions])}.pkl')
@@ -152,6 +153,7 @@ if __name__ == "__main__":
             print(f"\nWhen allowing at most {n_countries_missed} country to be missed, then following is top 5 best performance:")
             print(df_potential_networks_with_missed.head())
             print("Per country performance for the best combination of networks", best_row_with_missed["selected_networks"])
+            print(AS_in_EU_with_Probe.loc[best_row_with_missed["selected_networks"], ["Country_Long", "prb_count", "Name", "type"]])
             print(selected_performance_per_country_with_missed)
 
 
