@@ -141,7 +141,7 @@ if __name__ == "__main__":
                 selected_asn = country_asn_avg_latencies.loc[selected_networks]
                 selected_performance_per_country = selected_asn.min()
                 eu_avg_performance = selected_performance_per_country.mean()
-                missed_countries_long = [countries.get(country_code, country_code) for country_code in countries_not_yet_reached]
+                missed_countries_long = [countries.get(country_code, country_code) for country_code in countries_not_yet_reached+list(unreachables)]
                 potential_networks[network_set_label] = {"selected_networks": selected_networks, "eu_avg_performance": eu_avg_performance, "countries_missed": missed_countries_long, "n_countries_missed": len(countries_not_yet_reached)}
 
     # Finding the best from all the potential networks:
