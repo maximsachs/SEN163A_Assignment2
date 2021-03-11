@@ -96,7 +96,7 @@ if __name__ == "__main__":
     n_lines_to_process = 0 # Set to 0 or False to run the whole dataset.
     ip_versions = [4, 6] # Add a 6 to this list if you also want to analyse the ipv6.
     dataset_folder = "PICKLE_Datasets" # The folder where pickle datasets are stored
-    force_reprocess = False # By default will skip the file if it already exists in the processed data output folder.
+    force_reprocess = True # By default will skip the file if it already exists in the processed data output folder.
 
     
     output_file = os.path.join(dataset_folder, f'country_asn_avg_latencies_ip_{"_".join([ str(i) for i in ip_versions])}.pkl')

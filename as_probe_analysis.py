@@ -8,7 +8,9 @@ dataset_folder = "PICKLE_Datasets"
 with open(os.path.join(dataset_folder, 'AS_dataset.pkl'), 'rb') as f:
     AS_dataset = pickle.load(f)
 # Sorting by AS number.
-AS_dataset.sort_values("ASN", ascending=True, inplace=True)
+AS_dataset.index = [ int(asn.replace("AS","")) for asn in AS_dataset["ASN"]]
+# AS_dataset.sort_values("ASN", ascending=True, inplace=True)
+AS_dataset.sort_index(inplace=True)
 
 with open(os.path.join(dataset_folder, 'probe_dataset.pkl'), 'rb') as f:
     probe_dataset = pickle.load(f)
@@ -27,16 +29,21 @@ print(probe_dataset)
 # Limitations:
 # 1. Not every ASN might have a probe located within it. Without the probe we cannot include the ASN in the analysis.
 # 2. Probes might be attached within the ASN in a way that their latencies are not representative for other servers within the same ASN.
+# 3. Not every ASN is of type hosting, but we want to find hosting, and maybe not each country has been pinged from a hosting AS.
 
 # With the AS and probe data set, find the number of AS’s that can be used forhosting in the EU and have probes in the RIPE data set. Sort the ASN’s in ascending order and include the first and last three in your report (number, name and country).
+# Filtering for type hosting.
+as_is_hosting = AS_dataset[AS_dataset["type"].isin(["hosting"])]
+print(f"A total of {as_is_hosting.shape[0]} ASNs were found to be of type hosting.")
+
 # Filtering AS with european country code
-as_in_europe = AS_dataset[AS_dataset["Country"].isin(european_country_codes)]
-print(f"A total of {as_in_europe.shape[0]} ASNs were found to be located in a European country.")
+as_in_europe = as_is_hosting[as_is_hosting["Country"].isin(european_country_codes)]
+print(f"A total of {as_in_europe.shape[0]} hosting ASNs were found to be located in a European country.")
 
 # Filtering AS that are in the probe id dataset.
 as_in_europe_and_with_probe = as_in_europe[as_in_europe["ASN"].isin(probe_dataset["ASN"])]
 as_count_per_country = as_in_europe_and_with_probe.groupby("Country").size()
-print(f"A total of {as_in_europe_and_with_probe.shape[0]} ASNs were found to be located in a European country and also had a RIPE probe within them.")
+print(f"A total of {as_in_europe_and_with_probe.shape[0]} hosting ASNs were found to be located in a European country and also had a RIPE probe within them.")
 
 # Adding the probe ids to each row:
 probe_ids = []
